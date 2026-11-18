@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101813">
+<title>Пилот — гоночная игра</title>
+<style>
+:root{color-scheme:dark;--bg:#101813;--panel:#1b281e;--line:#344437;--text:#eef4e8;--muted:#a0ad9c;--lime:#d1fb71}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 15% 0%,#283d2a,var(--bg) 45rem);color:var(--text);font:15px "Segoe UI",Arial,sans-serif}
+.page{width:min(1180px,calc(100% - 40px));margin:auto}
+header{height:72px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #263429}
+.brand{font-weight:800;letter-spacing:.16em}.mark{display:inline-grid;place-items:center;width:30px;height:30px;margin-right:9px;border-radius:9px;background:var(--lime);color:#1c2819}
+.tag,.eyebrow,.hud-label,.footer{font-family:Consolas,monospace;letter-spacing:.1em;font-size:10px}
+.tag{color:#b7c3b3}.dot{display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;background:var(--lime)}
+.intro{display:flex;align-items:end;justify-content:space-between;padding:28px 0 20px}
+.eyebrow{margin:0 0 8px;color:var(--lime)}
+h1{margin:0;font-size:clamp(30px,4vw,42px);letter-spacing:-.05em}
+.sub{margin:8px 0 0;color:var(--muted);font-size:13px}
+.track-name{padding:11px 14px;border:1px solid var(--line);border-radius:10px;color:#cbd6c6;font-size:12px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:15px;align-items:start}
+.frame{overflow:hidden;border:1px solid #3a4a3b;border-radius:14px;background:#131d16;box-shadow:0 20px 55px #0004}
+.screen{position:relative;aspect-ratio:1000/660;background:#507749}
+canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;inset:12px 12px auto;display:flex;gap:7px;pointer-events:none}
+.box{padding:7px 9px;border:1px solid #ffffff20;border-radius:8px;background:#111b16d9;backdrop-filter:blur(6px)}
+.hud-label{display:block;margin-bottom:4px;color:#b1bdaa;font-size:8px}
+.box strong{font:14px Consolas,monospace}.speed strong{color:var(--lime);font-size:19px}.unit{margin-left:4px;font:8px Consolas;color:#c2cbbd}.timer{margin-left:auto}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;padding:15px;background:#0d1710a8;backdrop-filter:blur(3px);transition:opacity .2s,visibility .2s}
+.overlay.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.dialog{width:min(360px,100%);padding:22px 25px;border:1px solid #ffffff2b;border-radius:13px;background:#142119f2;text-align:center;box-shadow:0 20px 50px #0006}
+.icon{display:grid;place-items:center;width:38px;height:38px;margin:0 auto 12px;border-radius:12px;background:var(--lime);color:#1b2718;font-size:22px}
+h2{margin:0;font-size:24px;letter-spacing:-.04em}.dialog p:not(.eyebrow){color:#adbaaa;font-size:11px;line-height:1.6}
+button{font:inherit;cursor:pointer}
+.start{width:100%;display:flex;justify-content:space-between;padding:13px 15px;border:0;border-radius:8px;background:var(--lime);color:#172116;font:600 10px Consolas,monospace;letter-spacing:.08em}
+.hint{margin:11px 0 0;color:#899887;font-size:10px}
+kbd{padding:3px 6px;border:1px solid #ffffff26;border-radius:5px;background:#29362c;color:#e0eadb;font:10px Consolas}
+.game-footer{display:flex;justify-content:space-between;padding:13px 15px;color:#9aa797;font:9px Consolas,monospace;letter-spacing:.08em}
+.game-footer strong{color:#dfe8d9;font-weight:400}
+.side{display:grid;gap:12px}.card{padding:15px;border:1px solid var(--line);border-radius:11px;background:linear-gradient(145deg,#202f23,#18241c)}
+.card h3{margin:0;font-size:14px}.card .eyebrow{margin-bottom:5px;font-size:9px}
+.row{display:flex;justify-content:space-between;align-items:center;min-height:35px;border-bottom:1px solid #ffffff10;color:#d8e1d3;font-size:11px}
+.row:last-of-type{border:0}.keys{display:flex;gap:4px}.keys kbd{min-width:21px;text-align:center}
+.note,.tip{color:#9eac9a;font-size:10px;line-height:1.6}.note{margin:12px 0 0}
+.laps{display:flex;gap:5px;margin-top:14px}.segment{height:4px;flex:1;border-radius:4px;background:#3e4d40}.segment.done{background:var(--lime)}
+.progress{display:flex;justify-content:space-between;margin-top:8px;color:#9eac9a;font:8px Consolas}
+.tip{padding:13px;border:1px solid #d1fb7120;border-radius:10px;background:#d1fb710a}.tip strong{color:#e0ead8}
+.touch{display:none}
+footer{display:flex;justify-content:space-between;padding:18px 0;color:#7d8c7b}
+@media(max-width:850px){.layout{grid-template-columns:minmax(0,1fr) 215px;gap:10px}.card{padding:12px}.hud{inset:8px;gap:4px}.box{padding:6px 7px}}
+@media(max-width:680px){.page{width:calc(100% - 24px)}header{height:58px}.intro{padding:22px 0 15px}.layout{display:flex;flex-direction:column}.main,.side{width:100%}.side{grid-template-columns:1fr 1fr}.controls{grid-row:span 2}.hud{inset:6px;gap:3px}.box{padding:4px 5px}.hud-label{font-size:6px}.box strong{font-size:11px}.speed strong{font-size:14px}.timer{min-width:78px}.dialog{padding:16px 18px}.icon{width:30px;height:30px;margin-bottom:8px;font-size:18px}.dialog h2{font-size:20px}.dialog p:not(.eyebrow){margin:6px 0 10px;font-size:9px}.dialog .eyebrow{font-size:7px}.start{padding:10px;font-size:8px}.hint{margin-top:7px;font-size:8px}.touch{display:flex;justify-content:space-between;padding-top:9px}.touch-group{display:flex;gap:7px}.touch button{min-width:52px;min-height:44px;border:1px solid #ffffff20;border-radius:9px;background:#1d2a20;color:white;touch-action:none;user-select:none}.touch .gas{min-width:70px;border-color:#d1fb7133;color:var(--lime)}.touch .brake{font:9px Consolas;color:#f4bcae}}
+@media(max-width:390px){.intro h1{font-size:28px}.track-name{padding:8px;font-size:10px}.side{grid-template-columns:1fr}.controls{grid-row:auto}.tag{font-size:8px}.box{padding:4px}.timer{min-width:69px}}
+</style>
+</head>
+<body>
+<main class="page">
+<header><div class="brand"><span class="mark">P</span>ПИЛОТ<span style="color:var(--lime)">.</span></div><div class="tag"><span class="dot"></span>АРКАДНАЯ ГОНКА</div></header>
+<section class="intro"><div><p class="eyebrow">ТВОЯ ТРАССА. ТВОЙ ТЕМП.</p><h1>Время за руль.</h1><p class="sub">Три круга, одна трасса и только ты за рулём.</p></div><div class="track-name">01 &nbsp; Зелёный мыс · кольцо</div></section>
+<section class="layout" aria-label="Гоночная игра">
+<div class="main">
+<div class="frame"><div class="screen">
+<canvas id="game" width="1000" height="660" aria-label="Гоночная трасса"></canvas>
+<div class="hud">
+<div class="box speed"><span class="hud-label">СКОРОСТЬ</span><strong id="speed">000</strong><span class="unit">КМ/Ч</span></div>
+<div class="box"><span class="hud-label">КРУГ</span><strong id="lap">0 / 3</strong></div>
+<div class="box timer"><span class="hud-label">ВРЕМЯ КРУГА</span><strong id="time">00:00.00</strong></div>
+<div class="box"><span class="hud-label">ДАЛЬШЕ</span><strong id="cp">КП 1</strong></div>
+</div>
+<div class="overlay" id="overlay"><div class="dialog">
+<div class="icon">↗</div><p class="eyebrow" id="overTag">ЗАЕЗД ГОТОВ</p><h2 id="overTitle">Заведи мотор</h2>
+<p id="overText">Пройди три круга и постарайся поставить рекорд.</p>
+<button class="start" id="start">НАЧАТЬ ЗАЕЗД <span>→</span></button><div class="hint">Или нажми <kbd>Enter</kbd></div>
+</div></div>
+</div><div class="game-footer"><span><span class="dot"></span><span id="status">МАШИНА НА СТАРТЕ</span></span><span>ЛУЧШИЙ КРУГ &nbsp;<strong id="best">—:—.—</strong></span></div></div>
+<div class="touch"><div class="touch-group"><button data-key="left" aria-label="Влево">←</button><button data-key="right" aria-label="Вправо">→</button></div><div class="touch-group"><button class="brake" data-key="brake">ТОРМОЗ</button><button class="gas" data-key="gas">ГАЗ ↑</button></div></div>
+</div>
+<aside class="side">
+<section class="card controls"><p class="eyebrow">УПРАВЛЕНИЕ</p><h3>Ты за рулём</h3>
+<div class="row"><span>Газ</span><span class="keys"><kbd>W</kbd><kbd>↑</kbd></span></div>
+<div class="row"><span>Тормоз</span><span class="keys"><kbd>S</kbd><kbd>↓</kbd></span></div>
+<div class="row"><span>Руль</span><span class="keys"><kbd>A</kbd><kbd>D</kbd><kbd>←</kbd><kbd>→</kbd></span></div>
+<p class="note">Удерживай клавиши. На траве машина замедляется.</p></section>
+<section class="card"><p class="eyebrow">ЦЕЛЬ ЗАЕЗДА</p><h3>Финишируй первым.</h3><p class="note">Собери контрольные точки по порядку, чтобы засчитался круг.</p>
+<div class="laps"><span class="segment"></span><span class="segment"></span><span class="segment"></span></div><div class="progress"><span>ПРОГРЕСС</span><span id="progress">0 ИЗ 3 КРУГОВ</span></div></section>
+<div class="tip"><strong>✦ Подсказка пилота</strong><br>Сбавь скорость перед крутым поворотом — так проще удержать машину на асфальте.</div>
+</aside></section>
+<footer class="footer"><span>ПИЛОТ<span style="color:var(--lime)">.</span></span><span>ГОНОЧНАЯ ИГРА · 2026</span></footer>
+</main>
+<script>
+(function(){
+"use strict";
+const W=1000,H=660,RW=112,MAX=6.4,LAPS=3,canvas=document.getElementById("game"),ctx=canvas.getContext("2d");
+const anchors=[{x:180,y:112},{x:320,y:100},{x:445,y:116},{x:535,y:172},{x:665,y:175},{x:805,y:205},{x:870,y:275},{x:852,y:338},{x:785,y:394},{x:685,y:420},{x:590,y:401},{x:520,y:348},{x:430,y:344},{x:345,y:410},{x:245,y:425},{x:150,y:390},{x:112,y:315},{x:128,y:220}];
+function makeRoute(a){let out=[];for(let i=0;i<a.length;i++){let p0=a[(i+a.length-1)%a.length],p1=a[i],p2=a[(i+1)%a.length],p3=a[(i+2)%a.length];for(let s=0;s<14;s++){let t=s/14,t2=t*t,t3=t2*t;out.push({x:.5*(2*p1.x+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),y:.5*(2*p1.y+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3)});}}return out;}
+const route=makeRoute(anchors),check=[route[0],route[Math.floor(route.length*.25)],route[Math.floor(route.length*.5)],route[Math.floor(route.length*.75)]];
+const s={x:route[0].x,y:route[0].y,a:Math.atan2(route[1].y-route[0].y,route[1].x-route[0].x),v:0,started:false,finished:false,laps:0,next:1,lapStart:0,best:null,last:0,frame:0};
+const key={left:false,right:false,gas:false,brake:false};
+const $=id=>document.getElementById(id),overlay=$("overlay");
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+function roadDist(x,y){let d=1e9;for(let i=0;i<route.length;i++){let dx=route[i].x-x,dy=route[i].y-y;d=Math.min(d,dx*dx+dy*dy);}return Math.sqrt(d);}
+function time(ms){let n=Math.floor(Math.max(0,ms)/10);return String(Math.floor(n/6000)).padStart(2,"0")+":"+String(Math.floor(n%6000/100)).padStart(2,"0")+"."+String(n%100).padStart(2,"0");}
+function hud(now){$("speed").textContent=String(Math.round(Math.abs(s.v)*34)).padStart(3,"0");$("lap").textContent=s.laps+" / "+LAPS;$("progress").textContent=s.laps+" ИЗ "+LAPS+" КРУГОВ";$("cp").textContent=s.next===0?"ФИНИШ":"КП "+s.next;
+document.querySelectorAll(".segment").forEach((e,i)=>e.classList.toggle("done",i<s.laps));
+$("best").textContent=s.best===null?"—:—.—":time(s.best);
+$("time").textContent=s.started?time(s.finished?s.last:now-s.lapStart):"00:00.00";
+$("status").textContent=s.finished?"ФИНИШИРОВАЛ":s.started?"ЗАЕЗД ИДЁТ":"МАШИНА НА СТАРТЕ";}
+function reset(){s.x=route[0].x;s.y=route[0].y;s.a=Math.atan2(route[1].y-route[0].y,route[1].x-route[0].x);s.v=0;s.laps=0;s.next=1;s.finished=false;s.started=false;s.last=0;Object.keys(key).forEach(k=>key[k]=false);}
+function start(){reset();s.started=true;s.best=null;s.lapStart=performance.now();overlay.classList.add("hidden");}
+function finish(now){s.finished=true;s.last=now-s.lapStart;$("overTag").textContent="ЗАЕЗД ЗАВЕРШЁН";$("overTitle").textContent="Отличный заезд!";$("overText").textContent="Лучший круг — "+time(s.best)+". Хочешь попробовать ещё раз?";$("start").innerHTML="ЕЩЁ ОДИН ЗАЕЗД <span>→</span>";overlay.classList.remove("hidden");}
+function pass(now){if(dist(s,check[s.next])<43){if(s.next===0){let t=now-s.lapStart;s.laps++;s.best=s.best===null?t:Math.min(s.best,t);s.last=t;s.lapStart=now;s.next=1;if(s.laps>=LAPS)finish(now);}else{s.next++;if(s.next>=check.length)s.next=0;}}}
+function update(dt,now){if(!s.started||s.finished)return;if(key.gas)s.v+=8.3*dt;if(key.brake)s.v-=12*dt;if(!key.gas&&!key.brake)s.v*=Math.pow(.987,dt*60);s.v=Math.max(-2.4,Math.min(MAX,s.v));
+let turn=(key.right?1:0)-(key.left?1:0);if(turn&&Math.abs(s.v)>.12)s.a+=turn*(.55+Math.min(Math.abs(s.v)/MAX,1)*.72)*2*(s.v>=0?1:-1)*dt;
+s.x+=Math.cos(s.a)*s.v*60*dt;s.y+=Math.sin(s.a)*s.v*60*dt;if(roadDist(s.x,s.y)>RW/2-7)s.v*=Math.pow(.944,dt*60);
+if(s.x<16||s.x>W-16||s.y<16||s.y>H-16){s.x=Math.max(16,Math.min(W-16,s.x));s.y=Math.max(16,Math.min(H-16,s.y));s.v*=.35;}pass(now);}
+function stroke(color,width,dash){ctx.beginPath();route.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.lineJoin="round";ctx.lineCap="round";ctx.strokeStyle=color;ctx.lineWidth=width;ctx.setLineDash(dash||[]);ctx.stroke();ctx.setLineDash([]);}
+function background(){ctx.fillStyle="#527d4e";ctx.fillRect(0,0,W,H);for(let x=0;x<W;x+=42)for(let y=0;y<H;y+=42){let n=(x*19+y*37)%17;if(n<8){ctx.fillStyle="#16442135";ctx.fillRect(x+n,y+n%13,2,8);}}}
+function trees(){for(let x=25;x<W;x+=48)for(let y=20;y<H;y+=48){let tx=x+(x*7+y*3)%17-8,ty=y+(x*5+y*11)%15-7;if(roadDist(tx,ty)<94)continue;ctx.fillStyle="#18391e99";ctx.beginPath();ctx.ellipse(tx+3,ty+7,10,6,0,0,7);ctx.fill();ctx.fillStyle=(x+y)%3?"#2e5b37":"#244c30";ctx.beginPath();ctx.arc(tx,ty,9,0,7);ctx.fill();}}
+function track(){stroke("#172b1e66",143);stroke("#d4d4bb",137,[22,20]);stroke("#d65b50",137,[22,20]);stroke("#30383d",123);stroke("#394249",112);stroke("#dfe3ce99",3,[18,17]);
+let p=route[0],a=Math.atan2(route[1].y-p.y,route[1].x-p.x);ctx.save();ctx.translate(p.x,p.y);ctx.rotate(a);for(let row=0;row<2;row++)for(let col=0;col<8;col++){ctx.fillStyle=(row+col)%2?"#202720":"#f0f2e9";ctx.fillRect(-5+row*5,-56+col*14,5,14);}ctx.restore();}
+function car(){ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.a);ctx.fillStyle="#09100d66";ctx.beginPath();ctx.ellipse(2,4,20,11,0,0,7);ctx.fill();ctx.fillStyle="#14191b";ctx.fillRect(-10,-11,9,4);ctx.fillRect(7,-11,9,4);ctx.fillRect(-10,9,9,4);ctx.fillRect(7,9,9,4);ctx.fillStyle="#d84d43";ctx.beginPath();ctx.moveTo(20,0);ctx.lineTo(13,-8);ctx.lineTo(-12,-8);ctx.lineTo(-18,-5);ctx.lineTo(-18,5);ctx.lineTo(-12,8);ctx.lineTo(13,8);ctx.closePath();ctx.fill();ctx.fillStyle="#a9d7d0";ctx.fillRect(-10,-5.5,12,11);ctx.fillStyle="#fff1a2";ctx.fillRect(17,-5,2,3);ctx.fillRect(17,2,2,3);ctx.restore();}
+function render(now){background();trees();track();car();hud(now);}
+function resize(){let b=canvas.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(b.width*d);canvas.height=Math.round(b.height*d);ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);}
+function frame(now){let dt=s.frame?Math.min((now-s.frame)/1000,.04):0;s.frame=now;update(dt,now);render(now);requestAnimationFrame(frame);}
+const map={ArrowLeft:"left",a:"left",A:"left",ArrowRight:"right",d:"right",D:"right",ArrowUp:"gas",w:"gas",W:"gas",ArrowDown:"brake",s:"brake",S:"brake"};
+window.addEventListener("keydown",e=>{if(map[e.key]){e.preventDefault();key[map[e.key]]=true;}if((e.key==="Enter"||e.key===" ")&&(!s.started||s.finished)){e.preventDefault();start();}});
+window.addEventListener("keyup",e=>{if(map[e.key]){e.preventDefault();key[map[e.key]]=false;}});
+window.addEventListener("blur",()=>Object.keys(key).forEach(k=>key[k]=false));
+document.querySelectorAll("[data-key]").forEach(b=>{let k=b.dataset.key;b.addEventListener("pointerdown",e=>{e.preventDefault();b.setPointerCapture(e.pointerId);key[k]=true;});["pointerup","pointercancel","lostpointercapture"].forEach(t=>b.addEventListener(t,()=>key[k]=false));});
+$("start").addEventListener("click",start);window.addEventListener("resize",resize);resize();requestAnimationFrame(frame);
+}());
+</script>
+</body>
+</html>
